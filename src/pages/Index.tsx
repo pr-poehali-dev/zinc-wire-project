@@ -1,48 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 
+interface WBProduct {
+  id: number;
+  name: string;
+  brand?: string;
+  description: string;
+  link: string;
+  images: string[];
+  price?: number;
+  characteristics?: Record<string, string>;
+}
+
 const Index = () => {
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+  const [products, setProducts] = useState<WBProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const products = [
-    {
-      id: 1,
-      name: 'Проволока оцинкованная 2.0 мм',
-      image: 'https://cdn.poehali.dev/projects/ba42c2d5-fea4-40bf-9a9b-fda98483b6d8/files/7bb3c08e-103d-498c-9e12-fbb457c9ff2d.jpg',
-      diameter: '2.0 мм',
-      strength: '450-550 Н/мм²',
-      coating: 'Горячее цинкование',
-      length: '500 м',
-      price: '2 500 ₽',
-      description: 'Идеально подходит для электропастухов средней мощности. Высокая коррозионная стойкость.',
-    },
-    {
-      id: 2,
-      name: 'Проволока оцинкованная 2.5 мм',
-      image: 'https://cdn.poehali.dev/projects/ba42c2d5-fea4-40bf-9a9b-fda98483b6d8/files/23bf99ad-9e43-428f-a2df-6a7fe6c85a00.jpg',
-      diameter: '2.5 мм',
-      strength: '500-600 Н/мм²',
-      coating: 'Горячее цинкование',
-      length: '500 м',
-      price: '3 200 ₽',
-      description: 'Усиленная проволока для больших участков. Максимальная прочность и долговечность.',
-    },
-    {
-      id: 3,
-      name: 'Проволока оцинкованная 1.6 мм',
-      image: 'https://cdn.poehali.dev/projects/ba42c2d5-fea4-40bf-9a9b-fda98483b6d8/files/7a007800-bfee-4650-b075-da543ce07540.jpg',
-      diameter: '1.6 мм',
-      strength: '400-500 Н/мм²',
-      coating: 'Горячее цинкование',
-      length: '500 м',
-      price: '2 100 ₽',
-      description: 'Экономичный вариант для небольших загонов. Надежная защита вашего хозяйства.',
-    },
-  ];
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('https://functions.poehali.dev/f52cd9d5-c638-4754-818f-eef59f12f9ba');
+        
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить товары');
+        }
+        
+        const data = await response.json();
+        setProducts(data.products || []);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ошибка загрузки');
+        console.error('Error fetching products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -139,54 +141,90 @@ const Index = () => {
       <section id="catalog" className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Каталог проволоки</h2>
+            <h2 className="text-4xl font-bold mb-4">Каталог товаров</h2>
             <p className="text-xl text-muted-foreground">
-              Выберите оптимальный диаметр для вашего электропастуха
+              Все товары загружаются напрямую с Wildberries
             </p>
           </div>
+
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <p className="mt-4 text-muted-foreground">Загрузка товаров...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-12">
+              <Card className="max-w-md mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-destructive">Ошибка загрузки</CardTitle>
+                  <CardDescription>{error}</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          )}
+
+          {!loading && !error && products.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Товары не найдены</p>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-3 gap-8">
             {products.map((product) => (
               <Card 
                 key={product.id} 
-                className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
-                onClick={() => setSelectedProduct(product.id)}
+                className="overflow-hidden hover:shadow-xl transition-shadow"
               >
                 <div className="aspect-square bg-muted flex items-center justify-center">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
+                  {product.images && product.images.length > 0 ? (
+                    <img 
+                      src={product.images[0]} 
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Icon name="Package" size={48} className="text-muted-foreground" />
+                  )}
                 </div>
                 <CardHeader>
-                  <CardTitle className="text-xl">{product.name}</CardTitle>
-                  <CardDescription>{product.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Диаметр:</span>
-                      <Badge variant="secondary">{product.diameter}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Прочность:</span>
-                      <Badge variant="secondary">{product.strength}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Покрытие:</span>
-                      <Badge variant="secondary">{product.coating}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Длина:</span>
-                      <Badge variant="secondary">{product.length}</Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      {product.brand && (
+                        <Badge variant="outline" className="mb-2">{product.brand}</Badge>
+                      )}
+                      <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                     </div>
                   </div>
+                  <CardDescription className="line-clamp-2">{product.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {product.characteristics && Object.keys(product.characteristics).length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      {Object.entries(product.characteristics).slice(0, 3).map(([key, value]) => (
+                        <div key={key} className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">{key}:</span>
+                          <span className="font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between pt-4 border-t">
-                    <span className="text-2xl font-bold text-primary">{product.price}</span>
-                    <Button size="sm">
-                      <Icon name="ShoppingCart" size={16} className="mr-2" />
-                      Купить
+                    {product.price ? (
+                      <span className="text-2xl font-bold text-primary">
+                        {(product.price / 100).toLocaleString('ru-RU')} ₽
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Цена не указана</span>
+                    )}
+                    <Button 
+                      size="sm"
+                      onClick={() => window.open(product.link, '_blank')}
+                      className="gap-2"
+                    >
+                      <Icon name="ExternalLink" size={16} />
+                      Купить на WB
                     </Button>
                   </div>
                 </CardContent>
